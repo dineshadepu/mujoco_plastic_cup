@@ -110,6 +110,29 @@ from the wall instead of resting on the floor, and sags more (0.46 mm for 500 g)
 MuJoCo 3.14 (Python bindings), Franka Emika Panda model from MuJoCo Menagerie, NumPy, Numba,
 Matplotlib. Everything runs on a CPU; one robot trial takes about 5 minutes on an Apple M3 Pro.
 
+## Code in this repository
+
+This repository contains the **rigid-cup baseline**: the same robot pipeline with a rigid cup,
+which the deformable cup was later swapped into. It covers the scene built with MuJoCo's `MjSpec`
+API, damped-least-squares inverse kinematics for straight-line Cartesian motion, a force-controlled
+gripper, and contact/friction settings (elliptic friction cone) that stop the pads creeping on the
+tapered wall.
+
+| File | What it does |
+|---|---|
+| `panda_cup_rigid.py` | Panda picks a rigid cup with a 10 / 100 / 500 g cube; writes a video and a force/position log per trial |
+| `cup_rigid.py` | Rigid cup built from convex pieces (a single mesh would collide as its convex hull, closing the opening); drop demo |
+| `cup_rigid_cube.py`, `cup_rigid_cube_airdrop.py` | A cube dropped into the rigid cup (on the floor / in the air) |
+| `cube_drop.py` | Minimal MuJoCo example: a cube dropped on the floor |
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+./fetch_panda.sh                           # Panda model from MuJoCo Menagerie (pinned commit)
+.venv/bin/python panda_cup_rigid.py        # all three trials -> mp4 + npz (a few seconds each)
+.venv/bin/python panda_cup_rigid.py 0.5    # one trial, cube mass in kg
+.venv/bin/mjpython panda_cup_rigid.py 0.5 --view   # live viewer (macOS needs mjpython)
+```
+
 ## Limitations
 
 - The dent under an 8 N grip is deep in the large-deformation regime and has not been compared with
@@ -117,4 +140,5 @@ Matplotlib. Everything runs on a CPU; one robot trial takes about 5 minutes on a
 - The panel mesh is coarse (24 panels around the cup), so dents are resolved at about 7 mm.
 - Material damping at low frequency is not yet calibrated.
 
-The source code is not public. Contact me if you would like to discuss the method.
+The deformable-cup model (the discrete shell and its coupling to MuJoCo) is not public. Contact me
+if you would like to discuss the method.
