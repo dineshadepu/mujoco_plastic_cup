@@ -1,0 +1,8 @@
+# Showcase repo: only the README and its media are published. Everything else (code, models,
+# logs, videos) stays local. Whitelist, so new files are excluded by default.
+*
+!.gitignore
+!README.md
+!media/
+!media/*.gif
+!media/*.png
