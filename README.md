@@ -1,144 +1,56 @@
 # Robot grasp of a deformable plastic cup in MuJoCo
 
-A Franka Emika Panda picks up a thin-walled plastic cup with a cube inside (10 g, 100 g, 500 g),
-simulated in MuJoCo. The cup is not rigid: its wall ovalises under the fingers, its bottom sags under
-the cube, and the grip is held by friction on a surface that changes shape as it is squeezed.
+A Franka Emika Panda picks up a thin plastic cup (0.5 mm polypropylene) with a cube inside
+(10 g, 100 g, 500 g). The cup is deformable: the wall dents under the fingers, the bottom sags under
+the cube, and friction holds the cup as it changes shape.
 
-<p align="center">
-  <img src="media/pick_500g_overview.gif" width="640" alt="Panda lifting the deformable cup with a 500 g cube">
-</p>
+<p align="center"><img src="media/pick_500g_overview.gif" width="640"></p>
 
-## Approach
+**Model.** The cup is a reduced-order discrete shell: rigid surface panels joined by spring-damper
+joints, with bending stiffness from the shell bending rigidity D = Et³/12(1−ν²). Contact, friction and
+integration are MuJoCo's. The model is checked step by step against beam, ring and plate theory
+(`discrete_shell/01`–`04`) before the robot trials (`05`).
 
-MuJoCo's built-in deformable models (2D and 3D flex) could not represent a stiff, thin, curved plastic
-shell: at realistic polypropylene stiffness they became ill-conditioned, lost the curved rest shape,
-or collapsed under gravity. So I built a **reduced-order discrete shell** on top of MuJoCo:
-
-- The cup (72 mm rim, 90 mm tall, 0.5 mm polypropylene wall) is a set of rigid surface panels
-  that define its curved undeformed shape: a conical wall, a rounded heel and a recessed bottom
-  standing on a foot ring.
-- Neighbouring panels are joined by spring-damper joints for bending, twisting and in-plane
-  stretching. The bending stiffness is derived from the thin-shell bending rigidity
-  D = Et³ / 12(1 − ν²) and then **verified against closed-form thin-shell results** before the cup
-  ever meets the robot.
-- Contact, friction and time integration are MuJoCo's own (soft-constraint contact, elliptic
-  Coulomb cone), tuned so the very light panels do not sink into the heavier bodies that touch them.
-- The Panda follows a hard-coded vertical pick: inverse kinematics for straight-line motion and a
-  force-controlled gripper.
-
-## Verification, step by step
-
-The model was built up in stages, each checked against theory before moving on.
-
-| Stage | Check | Result |
-|---|---|---|
-| Cantilever strip under gravity | Euler-Bernoulli with plate rigidity D | Tip deflection within 0.03 %; first frequency 11.37 vs 11.38 Hz |
-| Cup wall floating in zero gravity | Rayleigh's ring ovalisation frequency | Within 0.15 %; rest shape exactly stress-free; energy never grows |
-| Cup wall dropped on the floor | Free fall, energy balance | Lands at the free-fall time, recovers elastically, comes to rest upright |
-| Full cup hung by its rim, cube inside | Clamped circular plate | Bottom within 5 % of plate theory |
-| Robot pick, three cube masses | Force balance | Finger forces carry the cup + cube weight within 0.1 N |
-
-<p align="center">
-  <img src="media/beam_gravity.png" width="820" alt="Beam under gravity: dynamic response and convergence to plate theory">
-</p>
-
-<p align="center">
-  <img src="media/ring_ovalisation.gif" width="320" alt="Cup wall ovalising in zero gravity">
-  <img src="media/ring_drop.gif" width="320" alt="Cup wall dropped on the floor">
-</p>
-
-<p align="center">
-  <img src="media/cup_hang_cube_x20.png" width="820" alt="Cup bottom under 10 g, 100 g and 500 g cubes, deformation magnified 20x">
-  <br><em>Cup bottom under a 10 g, 100 g and 500 g cube (deformation magnified 20×).</em>
-</p>
-
-## Results: robot pick with 10 g, 100 g and 500 g cubes
-
-Grip force 8 N per finger. All three cups are lifted 147 mm (of 150 mm) with the cube inside and
-under 0.03 mm of slip in the fingers.
-
-| | 10 g | 100 g | 500 g |
-|---|---|---|---|
-| Wall dent under the pads (on the ground → lifted) | 11.4 → 11.4 mm | 11.5 → 11.4 mm | 11.5 → 11.3 mm |
-| Wall bulge at 90° to the pads | 6.4 mm | 6.4 mm | 6.4 mm |
-| Bottom sag (on the ground → lifted) | 0.006 → 0.034 mm | 0.064 → 0.157 mm | 0.316 → 0.458 mm |
-| Friction used while holding (share of μ·N) | 33 % | 22 % | 64 % |
-| Slip in the fingers while holding | 0.007 mm | 0.004 mm | 0.026 mm |
-
-### Wall deformation while squeezed on the ground, and during the lift
-
-<p align="center">
-  <img src="media/wall_grasp_500g.gif" width="400" alt="Wall ovalising as the gripper closes on the ground">
-  <img src="media/wall_lift_500g.gif" width="400" alt="Wall deformation during the lift">
-</p>
-
-The grip ovalises the wall into a clean two-lobed shape: 11.4 mm inward under each pad and 6.4 mm
-outward at 90°. The dent barely changes during the lift; the wall under the pads carries the load in
-shear.
-
-### Bottom deformation
-
-<p align="center">
-  <img src="media/bottom_x10_500g.gif" width="400" alt="Cup bottom seen from below during the pick, deformation magnified 10x">
-  <br><em>Seen from below, bottom deformation magnified 10× (wall at true scale).</em>
-</p>
-
-On the ground the cube bends the recessed bottom over the foot ring. Once lifted, the bottom hangs
-from the wall instead of resting on the floor, and sags more (0.46 mm for 500 g).
-
-### Friction as the cup deforms
-
-<p align="center">
-  <img src="media/friction_500g.gif" width="400" alt="Contact forces between the fingers and the deforming wall">
-  <br><em>Contact forces drawn as arrows.</em>
-</p>
-
-- While the fingers close, the wall slides along the pads (friction saturated); once the dent has
-  formed, the contact sticks.
-- The dent tilts the wall under each pad so that the pad's normal force points slightly **down**.
-  A rigid tapered cup is wedged upward by the grip; the deformed cup is not, so friction carries the
-  whole load, and for the lightest cube it also carries the downward push locked in during the close.
-- With 500 g the grip uses 64 % of the available friction, so the minimum grip force is about
-  5 N per finger at μ = 0.5.
-
-<p align="center">
-  <img src="media/panda_shell.png" width="900" alt="Wall shape, dent, bottom sag and contact forces for all three trials">
-</p>
-
-## Tools
-
-MuJoCo 3.14 (Python bindings), Franka Emika Panda model from MuJoCo Menagerie, NumPy, Numba,
-Matplotlib. Everything runs on a CPU; one robot trial takes about 5 minutes on an Apple M3 Pro.
-
-## Code in this repository
-
-This repository contains the **rigid-cup baseline**: the same robot pipeline with a rigid cup,
-which the deformable cup was later swapped into. It covers the scene built with MuJoCo's `MjSpec`
-API, damped-least-squares inverse kinematics for straight-line Cartesian motion, a force-controlled
-gripper, and contact/friction settings (elliptic friction cone) that stop the pads creeping on the
-tapered wall.
-
-| File | What it does |
-|---|---|
-| `panda_cup_rigid.py` | Panda picks a rigid cup with a 10 / 100 / 500 g cube; writes a video and a force/position log per trial |
-| `cup_rigid.py` | Rigid cup built from convex pieces (a single mesh would collide as its convex hull, closing the opening); drop demo |
-| `cup_rigid_cube.py`, `cup_rigid_cube_airdrop.py` | A cube dropped into the rigid cup (on the floor / in the air) |
-| `cube_drop.py` | Minimal MuJoCo example: a cube dropped on the floor |
+## Setup
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-./fetch_panda.sh                           # Panda model from MuJoCo Menagerie (pinned commit)
-.venv/bin/python panda_cup_rigid.py        # all three trials -> mp4 + npz (a few seconds each)
-.venv/bin/python panda_cup_rigid.py 0.5    # one trial, cube mass in kg
-.venv/bin/mjpython panda_cup_rigid.py 0.5 --view   # live viewer (macOS needs mjpython)
+./fetch_panda.sh                     # Panda model from MuJoCo Menagerie
 ```
 
-## Limitations
+## Run
 
-- The dent under an 8 N grip is deep in the large-deformation regime and has not been compared with
-  a physical pinch test.
-- The panel mesh is coarse (24 panels around the cup), so dents are resolved at about 7 mm.
-- Material damping at low frequency is not yet calibrated.
+```bash
+cd discrete_shell
+../.venv/bin/python 05_panda_cup_shell.py        # the 3 robot trials (~5 min, in parallel)
+../.venv/bin/python 05_panda_cup_shell.py 0.5    # one trial, cube mass in kg
+../.venv/bin/python 01_beam_gravity.py           # verification tests 01-04 (seconds to ~2 min each)
+../.venv/bin/mjpython view.py panda 0.5          # live viewer (macOS: mjpython)
+```
 
-The deformable-cup model (the discrete shell and its coupling to MuJoCo) is not public. Contact me
-if you would like to discuss the method.
+Outputs go to `discrete_shell/out/`. For each trial, `05` writes one video per objective:
+
+| Objective | Video |
+|---|---|
+| 1. Wall deformation, cup on the ground | `panda_shell_<mass>_obj1_wall_grasp.mp4` |
+| 2. Wall deformation during the lift | `panda_shell_<mass>_obj2_wall_lift.mp4` |
+| 3. Bottom deformation | `panda_shell_<mass>_obj3_bottom_x10.mp4` (magnified 10×) |
+| 4. Friction as the cup deforms | `panda_shell_<mass>_obj4_friction.mp4` (contact-force arrows) |
+
+plus `panda_shell_<mass>_overview.mp4` and a summary figure `panda_shell.png`.
+
+**All videos (3 trials × 5): [Google Drive](LINK)**
+
+## Results (grip 8 N per finger)
+
+| | 10 g | 100 g | 500 g |
+|---|---|---|---|
+| Cup lifted (target 150 mm) | 147.6 mm | 147.1 mm | 146.5 mm |
+| Wall dent under the pads | 11.4 mm | 11.5 mm | 11.5 mm |
+| Bottom sag, lifted | 0.03 mm | 0.16 mm | 0.46 mm |
+| Friction used while holding | 33 % | 22 % | 64 % |
+| Slip in the fingers | < 0.01 mm | < 0.01 mm | 0.03 mm |
+
+<p align="center"><img src="media/panda_shell.png" width="900"></p>
+
+`panda_cup_rigid.py` is the same pipeline with a rigid cup (the baseline).

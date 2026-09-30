@@ -1,7 +1,7 @@
 # Showcase repo, whitelist: only what is listed here is published; new files are excluded by default.
-# Public: README + media, and the rigid-cup robot pipeline with its setup files.
-# Private (stays local): the discrete-shell cup model (discrete_shell/), the flex experiments,
-# third_party/ (fetched by fetch_panda.sh), and all generated videos, logs and XML.
+# Public: README + media, setup files, the rigid-cup baseline and the discrete-shell code.
+# Private (stays local): discrete_shell/docs (notes), the flex experiments, third_party/ (fetched by
+# fetch_panda.sh), and all generated videos, logs and XML.
 *
 !.gitignore
 !README.md
@@ -15,3 +15,6 @@
 !cup_rigid_cube.py
 !cup_rigid_cube_airdrop.py
 !panda_cup_rigid.py
+!discrete_shell/
+discrete_shell/*
+!discrete_shell/*.py

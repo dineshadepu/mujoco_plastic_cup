@@ -1,3 +1,5 @@
 mujoco==3.14.0
 numpy>=2.0
+numba>=0.60
 mediapy>=1.2
+matplotlib>=3.8
